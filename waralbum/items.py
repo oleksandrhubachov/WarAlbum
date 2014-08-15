@@ -6,3 +6,5 @@ class WaralbumPost(Item):
     images = Field()
     description = Field()
     timestamp = Field()
+    local_images = Field()
+    images_binary = Field()

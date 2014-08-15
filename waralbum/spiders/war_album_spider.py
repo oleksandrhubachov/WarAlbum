@@ -1,10 +1,15 @@
+import urllib
+import uuid
 from scrapy.contrib.linkextractors.sgml import SgmlLinkExtractor
 from scrapy.contrib.spiders.crawl import CrawlSpider, Rule
+from scrapy.exceptions import CloseSpider
 from scrapy.selector import Selector
 from waralbum.items import WaralbumPost
+from waralbum.mongo_checker import MongoChecker
 
 
 class WarAlbumSpider(CrawlSpider):
+    checker = MongoChecker()
     name = 'war'
     description_xpath = '//*[@id="mcont"]/div/div[2]/div[4]/div[{0}]/div[2]/div[1]/text()'
     description_xpath0 = '//*[@id="mcont"]/div/div[2]/div[3]/div[{0}]/div[2]/div[1]/text()'
@@ -14,7 +19,8 @@ class WarAlbumSpider(CrawlSpider):
     post_link_xpath = '//*[@id="mcont"]/div/div[2]/div[4]/div[{0}]/a/@name'
     page_name = 'page{0}.html'
     post_link_prefix = 'http://vk.com/waralbum?w=wall-'
-    
+    album_path = 'album'
+    photo_name = 'photo{0}.jpg'
     allowed_domains = ['vk.com']
     start_urls = ['https://m.vk.com/waralbum']
     rules = [Rule
@@ -51,11 +57,22 @@ class WarAlbumSpider(CrawlSpider):
                 image_urls.append(img.split('|')[0])
             if len(description) == 0 or len(image_urls) == 0:
                 break
-            post_link = selector.xpath(post_link_xpath.format(i)).extract()[0].split('-')[1]
+            post_link = self.post_link_prefix + selector.xpath(post_link_xpath.format(i)).extract()[0].split('-')[1]
+            if self.checker.check(post_link):
+                raise CloseSpider('Shutdown. New posts: {0}'.format(self.counter_posts))
+            local_images = []
+            # images_binaries = []
+            for url in image_urls:
+                photo_file = self.photo_name.format(uuid.uuid4())
+                urllib.urlretrieve(url, self.album_path + '/' + photo_file)
+                local_images.append(photo_file)
+                # images_binaries.append(open(self.album_path + '/' + photo_file, 'r').read())
             post = WaralbumPost()
             post['images'] = image_urls
             post['description'] = description
-            post['post_link'] = self.post_link_prefix + post_link
+            post['post_link'] = post_link
+            post['local_images'] = local_images
+            # post['images_binary'] = images_binaries
             posts.append(post)
             self.counter_posts += 1
             print description
