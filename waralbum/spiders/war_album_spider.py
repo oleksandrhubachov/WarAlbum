@@ -10,7 +10,11 @@ class WarAlbumSpider(CrawlSpider):
     description_xpath0 = '//*[@id="mcont"]/div/div[2]/div[3]/div[{0}]/div[2]/div[1]/text()'
     image_xpath = '//*[@id="mcont"]/div/div[2]/div[4]/div[{0}]/div[2]/div[2]/div/a/img/@data-src_big'
     image_xpath0 = '//*[@id="mcont"]/div/div[2]/div[3]/div[{0}]/div[2]/div[2]/div/a/img/@data-src_big'
+    post_link_xpath0 = '//*[@id="mcont"]/div/div[2]/div[3]/div[{0}]/a/@name'
+    post_link_xpath = '//*[@id="mcont"]/div/div[2]/div[4]/div[{0}]/a/@name'
     page_name = 'page{0}.html'
+    post_link_prefix = 'http://vk.com/waralbum?w=wall-'
+    
     allowed_domains = ['vk.com']
     start_urls = ['https://m.vk.com/waralbum']
     rules = [Rule
@@ -26,15 +30,15 @@ class WarAlbumSpider(CrawlSpider):
     def parse_start_url(self, response):
         hxs = Selector(response)
         self.save_page(response.body)
-        return self.parse_posts(5, hxs, self.description_xpath0, self.image_xpath0)
+        return self.parse_posts(5, hxs, self.description_xpath0, self.image_xpath0, self.post_link_xpath0)
 
     def parse_public(self, response):
         hxs = Selector(response)
         # self.save_page(response.body)
         self.counter_pages += 1
-        return self.parse_posts(10, hxs, self.description_xpath, self.image_xpath)
+        return self.parse_posts(10, hxs, self.description_xpath, self.image_xpath, self.post_link_xpath)
 
-    def parse_posts(self, amount, selector, description_xpath, image_xpath):
+    def parse_posts(self, amount, selector, description_xpath, image_xpath, post_link_xpath):
         posts = []
         for i in range(1, amount + 1):
             descr = selector.xpath(description_xpath.format(i)).extract()
@@ -47,13 +51,16 @@ class WarAlbumSpider(CrawlSpider):
                 image_urls.append(img.split('|')[0])
             if len(description) == 0 or len(image_urls) == 0:
                 break
-            print description
-            print image_urls
+            post_link = selector.xpath(post_link_xpath.format(i)).extract()[0].split('-')[1]
             post = WaralbumPost()
             post['images'] = image_urls
             post['description'] = description
+            post['post_link'] = self.post_link_prefix + post_link
             posts.append(post)
             self.counter_posts += 1
+            print description
+            print image_urls
+            print post_link
         return posts
 
     def save_page(self, content):
