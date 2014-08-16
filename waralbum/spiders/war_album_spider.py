@@ -35,7 +35,7 @@ class WarAlbumSpider(CrawlSpider):
 
     def parse_start_url(self, response):
         hxs = Selector(response)
-        self.save_page(response.body)
+        # self.save_page(response.body)
         return self.parse_posts(5, hxs, self.description_xpath0, self.image_xpath0, self.post_link_xpath0)
 
     def parse_public(self, response):
@@ -61,18 +61,15 @@ class WarAlbumSpider(CrawlSpider):
             if self.checker.check(post_link):
                 raise CloseSpider('Shutdown. New posts: {0}'.format(self.counter_posts))
             local_images = []
-            # images_binaries = []
             for url in image_urls:
                 photo_file = self.photo_name.format(uuid.uuid4())
                 urllib.urlretrieve(url, self.album_path + '/' + photo_file)
                 local_images.append(photo_file)
-                # images_binaries.append(open(self.album_path + '/' + photo_file, 'r').read())
             post = WaralbumPost()
-            post['images'] = image_urls
+            post['img_links'] = image_urls
             post['description'] = description
             post['post_link'] = post_link
             post['local_images'] = local_images
-            # post['images_binary'] = images_binaries
             posts.append(post)
             self.counter_posts += 1
             print description
